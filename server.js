@@ -14,8 +14,12 @@ const MIME_TYPES = {
   '.jpg': 'image/jpg',
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json'
 };
+
+const BINARY_EXTENSIONS = ['.glb', '.gltf', '.png', '.jpg', '.gif', '.svg', '.ico'];
 
 const server = http.createServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
@@ -27,8 +31,9 @@ const server = http.createServer((req, res) => {
 
   const extname = String(path.extname(filePath)).toLowerCase();
   const contentType = MIME_TYPES[extname] || 'application/octet-stream';
+  const isBinary = BINARY_EXTENSIONS.includes(extname);
 
-  fs.readFile(filePath, (error, content) => {
+  fs.readFile(filePath, isBinary ? undefined : 'utf-8', (error, content) => {
     if (error) {
       if(error.code == 'ENOENT') {
         res.writeHead(404, { 'Content-Type': 'text/html' });
@@ -39,7 +44,7 @@ const server = http.createServer((req, res) => {
       }
     } else {
       res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
+      res.end(content, isBinary ? undefined : 'utf-8');
     }
   });
 });
