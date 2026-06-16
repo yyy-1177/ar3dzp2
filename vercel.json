@@ -2,8 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.html",
+      "src": "**/*.{html,js,css,glb,gltf,png,jpg,jpeg,gif,svg,ico,json}",
       "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/models/(.*)",
+      "dest": "/models/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
