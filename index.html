@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR智能装配指导系统 - 整车装配</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            color: #333;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        #app { display: flex; flex-direction: column; height: 100vh; }
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            z-index: 10;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .logo h1 { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+        }
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .btn-secondary:hover { background: rgba(0, 0, 0, 0.1); }
+        
+        .main-content { flex: 1; display: flex; position: relative; min-height: 0; }
+        #viewer-container { flex: 1; position: relative; min-height: 0; }
+        #three-canvas { width: 100%; height: 100%; display: block; }
+        
+        .sidebar {
+            width: 340px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+        }
+        .panel {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .panel-title {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .product-info { display: flex; gap: 12px; align-items: center; }
+        .product-image {
+            width: 50px; height: 50px;
+            background: linear-gradient(135deg, #2d3436, #636e72);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            overflow: hidden;
+        }
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .product-details h3 { font-size: 14px; margin-bottom: 3px; color: #333; }
+        .product-details p { font-size: 11px; color: #999; }
+        
+        .progress-bar {
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border-radius: 3px;
+            transition: width 0.6s ease;
+            width: 0%;
+        }
+        .stats { display: flex; justify-content: space-around; align-items: center; }
+        .stat-value { font-size: 26px; font-weight: 700; color: #333; }
+        .stat-label { font-size: 11px; color: #999; margin-top: 2px; }
+        
+        .parts-panel {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .parts-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+        .part-chip {
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+            border: 2px solid transparent;
+        }
+        .part-chip:hover { background: rgba(0, 0, 0, 0.08); }
+        .part-chip.active { border-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .part-chip.hidden { opacity: 0.3; }
+        
+        .steps-header { padding: 10px 15px 6px; flex-shrink: 0; }
+        .steps-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px 12px;
+            min-height: 0;
+        }
+        .step-item {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .step-item:hover { background: rgba(0, 0, 0, 0.05); }
+        .step-item.active { border-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .step-item.completed { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); }
+        .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .step-number {
+            width: 24px; height: 24px;
+            background: rgba(0, 0, 0, 0.08);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            color: #666;
+        }
+        .step-item.completed .step-number { background: #00ff88; color: #000; }
+        .step-title { font-size: 13px; font-weight: 600; color: #333; }
+        .step-desc {
+            font-size: 11px;
+            color: #888;
+            padding-left: 34px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .step-actions { display: flex; gap: 6px; padding-left: 34px; }
+        .step-btn {
+            padding: 4px 10px;
+            font-size: 10px;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.08);
+            border: none;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .step-btn:hover { background: rgba(0, 0, 0, 0.15); }
+        .step-btn.primary { background: linear-gradient(135deg, #00d4ff, #7b2cbf); color: #fff; }
+        
+        .info-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            max-width: 280px;
+            z-index: 5;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .info-overlay h4 { font-size: 13px; margin-bottom: 4px; color: #00d4ff; }
+        .info-overlay p { font-size: 11px; color: #666; line-height: 1.5; }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #f8f8f8;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease;
+        }
+        .loading-screen.hidden { opacity: 0; pointer-events: none; }
+        .loader {
+            width: 50px; height: 50px;
+            border: 3px solid #ddd;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 15px; font-size: 14px; color: #666; }
+        
+        .notification {
+            position: fixed;
+            top: 80px; right: 20px;
+            background: rgba(0, 255, 136, 0.95);
+            color: #000;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 13px; font-weight: 600;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            z-index: 1500;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .notification.show { transform: translateX(0); }
+        .notification.error {
+            background: rgba(255, 107, 107, 0.95);
+            color: #fff;
+        }
+        
+        .welcome-panel {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            max-width: 380px;
+            z-index: 5;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .welcome-panel h2 { font-size: 22px; margin-bottom: 10px; color: #333; }
+        .welcome-panel p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        /* 零件悬停提示框 - 固定在左上角 */
+        .part-tooltip {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            border-radius: 14px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            pointer-events: none;
+            z-index: 1000;
+            width: 320px;
+            max-height: none;
+            overflow-y: visible;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            left: 20px;
+            top: 20px;
+        }
+        .part-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .tooltip-icon {
+            font-size: 18px;
+            width: 28px; height: 28px;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .tooltip-titles {
+            flex: 1;
+            overflow: hidden;
+        }
+        .tooltip-titles h4 {
+            font-size: 13px;
+            color: #1a1a2e;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tooltip-titles p {
+            font-size: 10px;
+            color: #888;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tooltip-image {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, #f0f2f5, #e8eaed);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tooltip-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .tooltip-desc {
+            font-size: 11px;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+        .tooltip-specs {
+            display: table;
+            width: 100%;
+            background: #f7f9fc;
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+        .tooltip-specs-row {
+            display: table-row;
+        }
+        .tooltip-specs .label {
+            display: table-cell;
+            font-size: 11px;
+            color: #888;
+            padding: 4px 0;
+            width: 35%;
+            white-space: nowrap;
+        }
+        .tooltip-specs .value {
+            display: table-cell;
+            font-size: 11px;
+            color: #1a1a2e;
+            padding: 4px 0;
+            width: 65%;
+            word-break: break-word;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* 整车展示模态框 */
+        .car-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        .car-modal.show { display: flex; }
+        .car-modal-content {
+            background: #fff;
+            border-radius: 18px;
+            max-width: 920px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .car-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            border-bottom: 1px solid #eee;
+        }
+        .car-modal-header h2 {
+            font-size: 18px;
+            color: #1a1a2e;
+            margin: 0;
+        }
+        .car-modal-header h2 small {
+            font-size: 12px;
+            color: #888;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+        .modal-close {
+            width: 32px; height: 32px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .modal-close:hover { background: #e0e0e0; color: #000; }
+        .car-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .car-hero-image {
+            width: 100%;
+            height: 360px;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f0f4ff 100%);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .car-hero-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .car-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .car-info-card {
+            background: #f7f9fc;
+            border-radius: 10px;
+            padding: 14px 16px;
+            border-left: 3px solid #00d4ff;
+        }
+        .car-info-card .label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .car-info-card .value {
+            font-size: 15px;
+            color: #1a1a2e;
+            font-weight: 700;
+        }
+        .car-info-card .sub {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .car-section-title {
+            font-size: 13px;
+            color: #1a1a2e;
+            font-weight: 700;
+            margin: 20px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .car-desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.7;
+            background: #f7f9fc;
+            padding: 14px 18px;
+            border-radius: 10px;
+        }
+        .part-thumbs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .part-thumb {
+            background: #fafbfc;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .part-thumb .img {
+            width: 100%;
+            height: 80px;
+            background: #f0f3f7;
+            overflow: hidden;
+        }
+        .part-thumb .img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .part-thumb .name {
+            font-size: 10px;
+            color: #555;
+            text-align: center;
+            padding: 5px 0;
+            font-weight: 500;
+        }
+
+        /* 加载进度 */
+        .loading-progress {
+            margin-top: 12px;
+            width: 200px;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .loading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .loading-text-small {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loading">
+        <div class="loader"></div>
+        <p class="loading-text">正在加载3D引擎...</p>
+        <div class="loading-progress">
+            <div class="loading-progress-fill" id="loadProgressFill"></div>
+        </div>
+        <p class="loading-text-small" id="loadProgressText">0%</p>
+    </div>
+
+    <!-- 零件悬停提示框 -->
+    <div class="part-tooltip" id="partTooltip"></div>
+
+    <!-- 整车展示模态框 -->
+    <div class="car-modal" id="carModal">
+        <div class="car-modal-content">
+            <div class="car-modal-header">
+                <h2>🚗 大众高尔夫 GTI 2021 整车展示 <small>Volkswagen Golf MK8 GTI</small></h2>
+                <button class="modal-close" id="modalCloseBtn">✕</button>
+            </div>
+            <div class="car-modal-body">
+                <div class="car-hero-image">
+                    <img id="carHeroImg" alt="Volkswagen Golf GTI 2021" />
+                </div>
+
+                <div class="car-info-grid">
+                    <div class="car-info-card">
+                        <div class="label">🚙 车型级别</div>
+                        <div class="value">紧凑型性能小钢炮</div>
+                        <div class="sub">Hot Hatch / GTI</div>
+                    </div>
+                    <div class="car-info-card">
+                        <div class="label">📐 车身尺寸 (L×W×H)</div>
+                        <div class="value">4296 × 1788 × 1471 mm</div>
+                        <div class="sub">轴距 2631 mm</div>
+                    </div>
+                    <div class="car-info-card">
+                        <div class="label">⚡ 动力总成</div>
+                        <div class="value">2.0 TSI EA888 涡轮增压</div>
+                        <div class="sub">180 kW (245 PS) / 370 N·m</div>
+                    </div>
+                    <div class="car-info-card">
+                        <div class="label">🏁 0-100 km/h</div>
+                        <div class="value">6.3 秒</div>
+                        <div class="sub">极速 250 km/h</div>
+                    </div>
+                    <div class="car-info-card">
+                        <div class="label">🔧 变速箱</div>
+                        <div class="value">7 速 DSG 双离合</div>
+                        <div class="sub">DQ381 湿式双离合</div>
+                    </div>
+                    <div class="car-info-card">
+                        <div class="label">⚖️ 整备质量</div>
+                        <div class="value">1420 kg</div>
+                        <div class="sub">MQB Evo 平台</div>
+                    </div>
+                </div>
+
+                <div class="car-section-title">📋 车型简介</div>
+                <div class="car-desc">
+                    第八代高尔夫GTI (MK8) 传承经典运动基因，搭载EA888 Gen4 2.0T涡轮增压发动机，
+                    最大功率180kW（245马力），峰值扭矩370N·m。配备运动型渐进式转向、电子差速锁（XDS）
+                    和可变悬挂阻尼（ DCC），传承GTI标志性红色刹车卡钳和蜂巢式格栅设计，
+                    内饰配备10.25英寸Digital Cockpit全液晶仪表，是当之无愧的紧凑型性能车标杆。
+                </div>
+
+                <div class="car-section-title">🔧 主要零部件概览</div>
+                <div class="part-thumbs" id="partThumbs"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">🚗</div>
+                <h1>大众高尔夫 GTI 2021 - 智能装配系统</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" id="viewCarBtn">🚙 整车展示</button>
+                <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
+                <button class="btn btn-primary" id="demoBtn">▶️ 自动演示</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div id="viewer-container">
+                <canvas id="three-canvas"></canvas>
+                
+                <div class="welcome-panel" id="welcomePanel">
+                    <h2>👋 欢迎使用大众高尔夫 GTI 2021 装配系统！</h2>
+                    <p>点击「自动演示」观看完整流程。</p>
+                    <p style="color: #00d4ff; font-size: 12px;">💡 鼠标悬停在3D模型上可查看零件详细信息，点击「🚙 整车展示」查看整车图片</p>
+                </div>
+
+                <div class="info-overlay">
+                    <h4>📋 当前步骤</h4>
+                    <p id="stepInfo">请点击右侧步骤开始</p>
+                </div>
+            </div>
+
+            <aside class="sidebar">
+                <div class="panel">
+                    <div class="panel-title">装配产品</div>
+                    <div class="product-info">
+                        <div class="product-image">
+                            <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=volkswagen%20golf%20GTI%202021%20MK8%20red%20hot%20hatch%20car%20icon%20simple%20clean%20design%20white%20background%20minimalist%20style&image_size=square" alt="VW Golf GTI" />
+                        </div>
+                        <div class="product-details">
+                            <h3>大众高尔夫 GTI MK8</h3>
+                            <p>型号: VW Golf GTI 2.0 TSI 2021</p>
+                            <p>零件数: 18件</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">装配进度</div>
+                    <div class="stats">
+                        <div style="text-align: center;">
+                            <div class="stat-value" id="completedSteps">0</div>
+                            <div class="stat-label">已完成</div>
+                        </div>
+                        <div style="color: #ddd; font-size: 18px;">/</div>
+                        <div style="text-align: center;">
+                            <div class="stat-value" id="totalSteps">18</div>
+                            <div class="stat-label">总步骤</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-panel">
+                    <div class="panel-title" style="margin-bottom: 6px;">🔧 零件切换</div>
+                    <div class="parts-grid" id="partsGrid"></div>
+                </div>
+
+                <div class="steps-header">
+                    <div class="panel-title">📝 装配步骤</div>
+                </div>
+                <div class="steps-container" id="stepsContainer"></div>
+            </aside>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        let scene, camera, renderer, controls;
+        let parts = {};
+        let currentStep = 0;
+        let completedStepsCount = 0;
+        let gltfModel = null;
+        let allMeshes = [];
+
+        // 基于前缀分组的智能归类映射（从底盘→内部→外部的装配顺序，共18步）
+        const partGroupMapping = [
+            { name: "安装主车身底盘结构", keywords: ["GExtBody_", "GExt_Body_", "Body_", "Chassis", "Underbody", "Floor"] },
+            { name: "安装动力总成与刹车系统", keywords: ["GExt_Brake_", "Brake", "Engine", "Motor", "Transmission", "Gearbox", "Exhaust", "Suspension", "Strut"] },
+            { name: "安装左前车轮", keywords: ["GRim_FL_", "GTire_FL_", "Tire_FL", "Wheel_FL", "wheel_fl", "rim_fl"] },
+            { name: "安装右前车轮", keywords: ["GRim_FR_", "GTire_FR_", "Tire_FR", "Wheel_FR", "wheel_fr", "rim_fr"] },
+            { name: "安装左后车轮", keywords: ["GRim_RL_", "GTire_RL_", "Tire_RL", "Wheel_RL", "wheel_rl", "rim_rl"] },
+            { name: "安装右后车轮", keywords: ["GRim_RR_", "GTire_RR_", "Tire_RR", "Wheel_RR", "wheel_rr", "rim_rr"] },
+            { name: "中控台与仪表大屏", keywords: ["GInt_IP_", "Dashboard", "IP_", "Instrument", "Console", "GInt_Material"] },
+            { name: "方向盘与转向柱", keywords: ["GInt_SW_", "Steering", "Wheel_", "steering_wheel"] },
+            { name: "前排与后排运动座椅", keywords: ["GInt_Seats_", "Gseat_", "Seat_", "seat_", "Seatbelt", "Headrest"] },
+            { name: "车内音响与门板内饰", keywords: ["GInt_Speaker_", "GInt_Door_", "GInt_Trim_", "Door_Panel", "Speaker", "Honeycomb"] },
+            { name: "安全气囊与车顶内衬", keywords: ["GInt_Airbag_", "GInt_Pillar_", "GInt_Roof_", "Airbag", "Headliner", "Pillar"] },
+            { name: "后备箱区域与遮物帘", keywords: ["GInt_Trunk_", "GInt_Back_Shelf_", "Trunk_", "Luggage", "Cargo", "Parcel"] },
+            { name: "前车门与限位器", keywords: ["GExt_Door_FL_", "GExt_Door_FR_", "GExt_Door_Limiter_F", "Door_FL", "Door_FR", "door_fl", "door_fr"] },
+            { name: "后车门与限位器", keywords: ["GExt_Door_RL_", "GExt_Door_RR_", "GExt_Door_Limiter_R", "Door_RL", "Door_RR", "door_rl", "door_rr"] },
+            { name: "前大灯与矩阵车灯", keywords: ["GExt_Lights_", "Headlight", "Headlamp", "Front_Light", "Housing_Light", "Daytime"] },
+            { name: "尾灯与刹车灯", keywords: ["GExt_Taillight_", "Taillight", "Tail_Light", "Rear_Light", "Stop_Light", "Brake_Light"] },
+            { name: "全车玻璃与挡风玻璃", keywords: ["Windows", "Glass_Clear", "Glass_Red", "Windshield", "Windscreen", "Side_Glass", "Rear_Window"] },
+            { name: "全景天窗与车身外壳", keywords: ["GExt_Sunroof_", "Sunroof", "Panoramic", "Sun_Roof", "Car_Paint", "Paint", "Shell", "Exterior_Panel", "Hood", "Fender", "Bumper", "Grille", "Body_Outer", "Outer_", "exterior_", "Exterior_", "BodyShell", "Body_Shell", "Golf_Body", "GTI_Body", "VW_Golf", "Car_Body", "GExt_Body", "GExt_Fender", "GExt_Bumper", "GExt_Grille", "GExt_Trunk_Lid_", "Trunk_Lid", "Tailgate", "Liftgate", "Rear_Hatch", "Rear_Door", "trunk_lid", "boot_lid", "Rear_Trunk", "GExt_Rear"] }
+        ];
+
+        // 装配步骤定义（动态生成）
+        let assemblySteps = [];
+
+        // 零件颜色定义
+        const partColors = {
+            chassis: 0x4a5568,
+            engine: 0xe53e3e,
+            transmission: 0x3182ce,
+            exhaust: 0x4a5568,
+            intakeSystem: 0x718096,
+            frontSuspension: 0x718096,
+            rearSuspension: 0x718096,
+            brakeSystem: 0x2d3748,
+            frontWheels: 0x1f2937,
+            rearWheels: 0x1f2937,
+            body: 0xc01717,
+            firewall: 0x374151,
+            fuelSystem: 0x4a5568,
+            electricalSystem: 0x805ad5,
+            acSystem: 0x4299e1,
+            sunroof: 0x2d3748,
+            seats: 0x1f2937,
+            steeringWheel: 0x1f2937,
+            dashboard: 0x1f2937,
+            audioSystem: 0x2d3748
+        };
+
+        // 零件图标
+        const partIcons = {
+            step_0: '🔲',
+            step_1: '⚙️',
+            step_2: '🛞',
+            step_3: '🛞',
+            step_4: '🛞',
+            step_5: '🛞',
+            step_6: '📊',
+            step_7: '🎯',
+            step_8: '💺',
+            step_9: '🔊',
+            step_10: '🛡️',
+            step_11: '📦',
+            step_12: '🚪',
+            step_13: '🚪',
+            step_14: '💡',
+            step_15: '🔴',
+            step_16: '🔍',
+            step_17: '🌞',
+            step_18: '🚪',
+            step_19: '🎨'
+        };
+
+        // 图片生成函数（使用 text_to_image API）
+        function makeImage(prompt) {
+            return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt='
+                + encodeURIComponent(prompt) + '&image_size=landscape_4_3';
+        }
+
+        // 每个装配步骤的详细描述和图片数据
+        const stepInfoData = [
+            {
+                icon: '🔲',
+                title: '主车身底盘结构',
+                desc: '大众高尔夫 GTI 2021 款 MQB Evo 模块化平台基础车身结构，采用高强度热成型钢，提供卓越的车身刚性与碰撞安全性，是整个车辆装配的起点。',
+                image: makeImage('volkswagen golf GTI 2021 chassis body in white underbody frame, automotive technical product photo, white background, studio lighting, professional car body-in-white structure frame'),
+                specs: { '平台': 'MQB Evo', '材质': '热成型高强度钢', '工艺': '激光焊接', '车身重量': '约 310 kg' }
+            },
+            {
+                icon: '⚙️',
+                title: '动力总成与刹车系统',
+                desc: 'EA888 Gen4 2.0T 涡轮增压发动机、7速湿式双离合变速箱与高性能刹车系统的组合，提供强劲动力输出与精准制动，是GTI小钢炮的核心。',
+                image: makeImage('volkswagen golf GTI EA888 Gen4 engine bay with red brake caliper, automotive tech photo, white background, studio lighting, high performance brake system and engine'),
+                specs: { '发动机': 'EA888 Gen4 2.0T', '功率': '245 PS / 370 Nm', '变速箱': '7速DSG', '制动盘': '通风盘 Ø340 mm', '卡钳': '红色高性能' }
+            },
+            {
+                icon: '🛞',
+                title: '左前车轮',
+                desc: '左前 18 英寸 Richmond 铝合金双色运动轮毂，配合 Continental 225/40 R18 高性能轮胎，提供精准的转向与抓地性能。',
+                image: makeImage('volkswagen golf GTI 18 inch Richmond alloy wheel front left FL with performance tire, automotive wheel product photo, white background, studio lighting'),
+                specs: { '尺寸': '18 × 7.5J', '轮胎': '225/40 R18', '品牌': 'Continental SportContact', 'Offset': 'ET 45', '承重': '690 kg' }
+            },
+            {
+                icon: '🛞',
+                title: '右前车轮',
+                desc: '右前车轮，与左前对称配置，确保左右平衡对称的性能表现。',
+                image: makeImage('volkswagen golf GTI 18 inch Richmond alloy wheel front right FR with tire, automotive wheel product photo, white background, studio lighting'),
+                specs: { '尺寸': '18 × 7.5J', '轮胎': '225/40 R18', '品牌': 'Continental', 'Offset': 'ET 45', '承重': '690 kg' }
+            },
+            {
+                icon: '🛞',
+                title: '左后车轮',
+                desc: '左后轮 18 英寸铝合金轮毂与运动化运动化轮胎，保持前后一致的操控平衡与高性能。',
+                image: makeImage('volkswagen golf GTI 18 inch rear left RL alloy wheel with tire, automotive wheel product photo, white background'),
+                specs: { '尺寸': '18 × 7.5J', '轮胎': '225/40 R18', '品牌': 'Continental', '制动盘': '实心盘 Ø310 mm', '卡钳': 'GTI红色' }
+            },
+            {
+                icon: '🛞',
+                title: '右后车轮',
+                desc: '右后轮，与左后轮对称配置，共同承载车辆后部重量与动力传递。',
+                image: makeImage('volkswagen golf GTI 18 inch rear right RR alloy wheel rim with tire, automotive wheel product photo, white background, studio lighting'),
+                specs: { '尺寸': '18 × 7.5J', '轮胎': '225/40 R18', '品牌': 'Continental SportContact', '制动盘': '实心盘 Ø310 mm' }
+            },
+            {
+                icon: '📊',
+                title: '中控台与仪表大屏',
+                desc: '高尔夫 GTI MK8 数字驾驶舱，配备 10.25 英寸全液晶仪表盘与 8.25 英寸 Discover Pro 中控大屏，支持触控与语音控制。',
+                image: makeImage('volkswagen golf GTI MK8 digital cockpit dashboard with instrument cluster and multimedia screen, automotive interior product photo, studio lighting white background'),
+                specs: { '仪表屏': '10.25" 全液晶', '中控屏': '8.25" Discover Pro', '音响': 'Harman Kardon', '系统': 'MIB3', '接口': 'Type-C USB' }
+            },
+            {
+                icon: '🎯',
+                title: '方向盘',
+                desc: 'GTI 专属三幅式真皮多功能方向盘，带红色缝线与换挡拨片，集成触控按钮，手感舒适运动，是驾驶者与车辆沟通的桥梁。',
+                image: makeImage('volkswagen golf GTI MK8 three spoke sport multifunction leather steering wheel with red stitching, automotive interior product photo, white background, studio lighting'),
+                specs: { '材质': 'Nappa真皮', '缝线': 'GTI 红色', '换挡拨片': '支持', '功能': '多功能触控', '加热': '支持' }
+            },
+            {
+                icon: '💺',
+                title: '前排与后排运动座椅',
+                desc: 'GTI 专属苏格兰格子呢运动座椅，采用 ArtVelours 微纤维材料，配备加热与12向电动调节，提供良好的侧向支撑。',
+                image: makeImage('volkswagen golf GTI 2021 sport seats with tartan fabric upholstery and integrated headrest automotive interior product photo white background studio lighting'),
+                specs: { '材质': 'Tartan织物+微纤维', '调节': '12 向电动', '侧向支撑': '良好', '加热': '双区加热', '后排': '3 座位' }
+            },
+            {
+                icon: '🔊',
+                title: '车内音响与门板内饰',
+                desc: 'Harman Kardon 高级音响系统与精致的门板内饰，提供沉浸式的听觉与豪华的乘坐体验，GTI专属内饰设计。',
+                image: makeImage('volkswagen golf GTI MK8 door panel interior with Harman Kardon speaker system automotive interior product photo white background studio lighting'),
+                specs: { '音响品牌': 'Harman Kardon', '扬声器': '10 + 低音炮', '功放': '480 W', '门板': 'ArtVelours饰边' }
+            },
+            {
+                icon: '🛡️',
+                title: '安全气囊与车顶内衬',
+                desc: '全车多安全气囊系统与高级车顶内衬，为乘客提供完善的安全保护与舒适的乘车环境。',
+                image: makeImage('volkswagen golf GTI safety airbag system headliner roof interior automotive product photo'),
+                specs: { '气囊数': '7 个', '气囊类型': '多级触发', '内衬': '高级织物', '立柱': 'A/B/C 柱' }
+            },
+            {
+                icon: '📦',
+                title: '后备箱区域与遮物帘',
+                desc: '374L 容量后备箱，配有实用的可折叠后排座椅与遮物帘，提供灵活的储物空间。',
+                image: makeImage('volkswagen golf GTI 2021 trunk boot cargo area with parcel shelf luggage compartment automotive product photo white background studio lighting'),
+                specs: { '容积': '374 L', '扩展': '1230 L', '折叠': '40/60 可分', '遮物帘': '标配', '挂钩': '4 个' }
+            },
+            {
+                icon: '🚪',
+                title: '前车门',
+                desc: 'GTI 标志性的前门，配备液压限位器，开关平稳顺畅，开门角度适中，进出方便。',
+                image: makeImage('volkswagen golf GTI MK8 front door FL with hydraulic limiter automotive product photo white background studio lighting'),
+                specs: { '车门数': '5 门', '限位器': '液压', '密封条': '双层隔音', '门把手': '车身同色', '玻璃': '双层隔音' }
+            },
+            {
+                icon: '🚪',
+                title: '后车门',
+                desc: '后车门同样配备液压限位器与双层密封条，提供安静舒适的后排乘客进出体验。',
+                image: makeImage('volkswagen golf GTI MK8 rear door RL RR with hydraulic limiter automotive product photo white background studio lighting'),
+                specs: { '限位器': '液压', '密封条': '双层', '儿童锁': '电子控制', '后门扬声器': 'Harman Kardon' }
+            },
+            {
+                icon: '💡',
+                title: '前大灯与矩阵车灯',
+                desc: 'IQ.LIGHT LED 矩阵式前大灯，带GTI专属红色装饰条与贯穿式LED灯带，锐利而富有科技感。',
+                image: makeImage('volkswagen golf GTI 2021 IQ.LIGHT matrix LED headlight with red accent line automotive product photo white background studio lighting sharp modern car lights'),
+                specs: { '类型': 'LED 矩阵', '远光': '矩阵式', '特色': '红色LED灯带', '日行灯': 'LED', '自动大灯': '支持' }
+            },
+            {
+                icon: '🔴',
+                title: '尾灯与刹车灯',
+                desc: 'GTI 标志性 LED 尾灯与高位刹车灯，点亮效果鲜明，提供出色的夜间行车安全。',
+                image: makeImage('volkswagen golf GTI 2021 LED taillight rear light with brake lamp, automotive product photo, white background, studio lighting, modern car lights'),
+                specs: { '类型': '全 LED', '刹车灯': 'LED', '转向灯': 'LED', '效果': '动态转向', '效果2': '动态流水' }
+            },
+            {
+                icon: '🔍',
+                title: '全车玻璃与挡风玻璃',
+                desc: '全车隐私玻璃与隔热隔音前挡风玻璃，提供良好的隔音隔热与隐私保护。',
+                image: makeImage('volkswagen golf GTI 2021 windshield side glass windows automotive technical product photo white background studio lighting car windshield'),
+                specs: { '前挡': '隔热隔音', '侧窗': '隐私玻璃', '后挡': '隐私玻璃', '尺寸': '4296×1788×1471 mm' }
+            },
+            {
+                icon: '🌞',
+                title: '全景天窗与车身外壳',
+                desc: '全景天窗与GTI经典红色车漆外壳的最终总装，配备蜂巢式前格栅、车身腰线与后尾门，完成整车装配。',
+                image: makeImage('volkswagen golf GTI 2021 red car body exterior with panoramic sunroof and honeycomb grille three quarter front view, automotive product photo, white background, studio lighting, red sport hatchback'),
+                specs: { '颜色': 'GTI 经典红', '格栅': '蜂巢式', '天窗': '全景可开', '尾门': '电动', '车漆': '金属漆', '风阻系数': 'Cd 0.27' }
+            }
+        ];
+
+        // 大众高尔夫 GTI 2021 (MK8) 真实零件数据
+        const partData = {
+            chassis: {
+                name: '底盘车架',
+                nameEn: 'MQB Evo Sport Chassis',
+                icon: '🔲',
+                image: makeImage('automotive car chassis frame underbody, volkswagen golf GTI MK8 MQB evo sport platform, technical illustration, white background, isometric view, professional product photo'),
+                description: '大众 MQB Evo 模块化运动化平台，针对GTI车型进行运动化调校，采用高强度热成型钢与激光焊接工艺，配备运动型底盘衬套，操控性能更佳。',
+                specs: {
+                    '平台': 'MQB Evo',
+                    '类型': '运动化调校',
+                    '材料': '超高强度热成型钢',
+                    '工艺': '激光焊接',
+                    '轴距': '2631 mm',
+                    '车架重量': '约 310 kg'
+                }
+            },
+            engine: {
+                name: '发动机总成',
+                nameEn: 'EA888 Gen4 2.0 TSI',
+                icon: '⚙️',
+                image: makeImage('volkswagen EA888 Gen4 2.0 TSI turbocharged inline 4 cylinder automotive engine, technical product photo, clean white background, professional photography, sport engine'),
+                description: 'EA888 Gen4 系列 2.0T 涡轮增压全铝发动机，搭载燃油混合喷射（FSI+MPI）和可变排量机油泵技术，动力强劲，响应迅速，是GTI车型的心脏。',
+                specs: {
+                    '型号': 'EA888 Gen4 2.0 TSI',
+                    '排量': '2.0L (1984cc)',
+                    '最大功率': '180 kW / 245 PS',
+                    '最大扭矩': '370 N·m',
+                    '缸径×行程': '82.5 × 92.8 mm',
+                    '压缩比': '9.3:1',
+                    '供油': '350bar 缸内直喷',
+                    '排放': '国六b / 欧6d'
+                }
+            },
+            transmission: {
+                name: '变速箱',
+                nameEn: '7-Speed DSG DQ381',
+                icon: '🔩',
+                image: makeImage('volkswagen 7 speed DSG DQ381 dual clutch wet transmission gearbox, automotive technical photo, white background, product photography'),
+                description: 'DQ381 7 速湿式双离合变速箱，专为高扭矩发动机设计，换挡迅速平顺，传动效率高达 95%，支持弹射起步模式（Launch Control）。',
+                specs: {
+                    '型号': 'DQ381 (7 速 DSG)',
+                    '类型': '湿式双离合',
+                    '最大扭矩': '420 N·m',
+                    '换挡时间': '< 100 ms',
+                    '传动效率': '95%',
+                    '挡位数': '7 前进 + 1 倒挡',
+                    '重量': '约 82 kg'
+                }
+            },
+            frontSuspension: {
+                name: '前悬挂',
+                nameEn: 'GTI Sport MacPherson Strut',
+                icon: '🔧',
+                image: makeImage('volkswagen golf GTI MK8 front sport MacPherson suspension strut assembly with anti roll bar, automotive technical, white background, product photo'),
+                description: '前麦弗逊式独立悬挂，配备GTI运动型稳定杆和渐进式液压减震筒，经过运动化调校，在保持舒适性的同时提供精准的操控和优异的弯道性能。',
+                specs: {
+                    '类型': '麦弗逊式独立悬挂',
+                    '减震器': '渐进式液压双筒',
+                    '弹簧': 'GTI运动型螺旋弹簧',
+                    '稳定杆': 'GTI运动型前防倾杆',
+                    '材质': '铝合金控制臂',
+                    '行程': '约 145 mm'
+                }
+            },
+            rearSuspension: {
+                name: '后悬挂',
+                nameEn: 'GTI Multi-link with DCC',
+                icon: '🔧',
+                image: makeImage('volkswagen golf GTI MK8 rear multi link independent suspension assembly with DCC, automotive technical photo, white background, product photography'),
+                description: '后多连杆独立悬挂，四连杆加横向稳定杆结构，配合DCC（动态底盘控制）自适应悬架系统，提供卓越的轮胎贴地性和可调节的驾驶模式选择。',
+                specs: {
+                    '类型': '多连杆独立悬挂',
+                    '连杆数': '4 连杆 + 1 横拉杆',
+                    '减震器': 'DCC自适应阻尼',
+                    '材质': '高强度钢',
+                    '横向稳定杆': 'GTI运动型',
+                    '调校': '运动化舒适调校'
+                }
+            },
+            frontWheels: {
+                name: '前车轮',
+                nameEn: '18" Richmond Alloy Wheels',
+                icon: '🛞',
+                image: makeImage('volkswagen golf GTI 18 inch Richmond alloy wheel rim with performance tire 225/40 R18, automotive wheel product photo, white background, studio lighting'),
+                description: '18 英寸 Richmond 铝合金双色运动轮毂，搭配 Continental 225/40 R18 高性能轮胎，轮毂设计动感时尚，彰显GTI运动身份。',
+                specs: {
+                    '尺寸': '18 × 7.5J',
+                    '轮胎规格': '225/40 R18',
+                    '轮胎品牌': 'Continental SportContact',
+                    '制动盘': '通风盘 Ø 340mm',
+                    '制动卡钳': 'GTI 红色对向四活塞',
+                    '轮毂材质': '铝合金'
+                }
+            },
+            rearWheels: {
+                name: '后车轮',
+                nameEn: '18" Richmond Alloy Wheels',
+                icon: '🛞',
+                image: makeImage('volkswagen golf GTI 18 inch rear Richmond alloy wheel rim with tire, automotive wheel product photo, white background, studio lighting'),
+                description: '后轮同样配备 18 英寸 Richmond 铝合金双色运动轮毂和 Continental 高性能轮胎，前后规格统一保证操控平衡，红色刹车卡钳格外醒目。',
+                specs: {
+                    '尺寸': '18 × 7.5J',
+                    '轮胎规格': '225/40 R18',
+                    '轮胎品牌': 'Continental SportContact',
+                    '制动盘': '实心盘 Ø 310mm',
+                    '制动卡钳': 'GTI 红色对向四活塞',
+                    '悬挂连接': '多连杆独立'
+                }
+            },
+            body: {
+                name: '车身外壳',
+                nameEn: 'MK8 GTI Body-in-White',
+                icon: '🚗',
+                image: makeImage('volkswagen golf GTI 2021 MK8 hatchback red car body exterior three quarter front view, IQ.LIGHT matrix LED headlight with red accent, honeycomb grille, sharp character lines, automotive product photo, white background, studio lighting'),
+                description: '大众高尔夫 GTI MK8 标志性车身设计，配备GTI专属蜂巢式前格栅、IQ.LIGHT 矩阵式 LED 大灯带红色装饰线，锋利的车身腰线与悬浮式车顶设计，传承GTI经典元素。',
+                specs: {
+                    '级别': '紧凑型性能小钢炮',
+                    '长×宽×高': '4296×1788×1471 mm',
+                    '轴距': '2631 mm',
+                    '整备质量': '1420 kg',
+                    '风阻系数': 'Cd 0.27',
+                    '车门数': '5 门',
+                    '油箱容积': '50 L'
+                }
+            },
+            firewall: {
+                name: '防火墙',
+                nameEn: 'Firewall Bulkhead',
+                icon: '🧱',
+                image: makeImage('car firewall bulkhead panel between engine bay and cabin, automotive technical photo, white background, product photography'),
+                description: '高强度钢制防火墙，集成隔热隔音材料，有效阻隔发动机舱的噪音与热量传导至驾驶舱，提升 NVH 性能。',
+                specs: {
+                    '材料': '镀锌高强度钢',
+                    '厚度': '0.8 - 1.2 mm',
+                    '隔热层': 'EPP 泡沫 + 铝箔',
+                    '隔音': '沥青阻尼板',
+                    '减重设计': '空腔注蜡',
+                    '功能': '隔热+隔音+结构'
+                }
+            },
+            seats: {
+                name: '座椅',
+                nameEn: 'GTI Sport Seats',
+                icon: '💺',
+                image: makeImage('volkswagen golf GTI 2021 sport seats with tartan fabric upholstery and integrated headrest, automotive interior product photo, white background, studio lighting'),
+                description: 'GTI 专属运动型座椅，采用经典苏格兰格子呢织物与 ArtVelours 微纤维材质拼接，提供良好的侧面支撑，配备加热功能，兼顾运动性与舒适性。',
+                specs: {
+                    '材质': 'Tartan织物+ArtVelours',
+                    '调节方式': '12 向电动',
+                    '功能': '加热/高度可调',
+                    '认证': 'AGR 背部健康认证',
+                    '侧翼': 'GTI运动型支撑',
+                    '头枕': '一体式头枕'
+                }
+            },
+            steeringWheel: {
+                name: '方向盘',
+                nameEn: 'GTI Multi-function Sport Wheel',
+                icon: '🎯',
+                image: makeImage('volkswagen golf GTI 2021 multi function sport leather steering wheel with GTI logo and paddle shifters, automotive interior product photo, white background, studio lighting'),
+                description: 'GTI 专属三辐式多功能真皮运动方向盘，集成电容触控式多功能按键和换挡拨片，加热功能与完美直径设计，提供卓越的握感与操控体验。',
+                specs: {
+                    '材质': 'Nappa 真皮',
+                    '按键': 'GTI电容触控+拨片',
+                    '功能': '加热/换挡拨片',
+                    '调节': '手动 4 向',
+                    '气囊': '驾驶员安全气囊',
+                    '直径': '370 mm'
+                }
+            },
+            dashboard: {
+                name: '仪表盘',
+                nameEn: 'Digital Cockpit 10.25"',
+                icon: '📊',
+                image: makeImage('volkswagen golf GTI 2021 digital cockpit dashboard with 10.25 inch instrument cluster, automotive interior product photo, white background, studio lighting'),
+                description: '10.25 英寸 Digital Cockpit 全液晶数字仪表，可自定义显示风格（GTI专属红色主题），支持导航投射与行驶数据展示，配合Discovery Media中控屏。',
+                specs: {
+                    '仪表': '10.25" Digital Cockpit',
+                    '中控屏': '8.25" 触控电容屏',
+                    '分辨率': '1280×480 (仪表)',
+                    '系统': 'MIB 3.0',
+                    '互联': '有线 CarPlay/Android Auto',
+                    '主题': 'GTI专属红色主题',
+                    '导航': 'GPS+实时路况'
+                }
+            },
+            exhaust: {
+                name: '排气系统',
+                nameEn: 'GTI Sport Exhaust',
+                icon: '💨',
+                image: makeImage('volkswagen golf GTI MK8 sport exhaust system with dual tailpipes, stainless steel, automotive technical photo, white background, product photography'),
+                description: 'GTI 运动型排气系统，采用双边单出设计（左侧），配备阀门控制排气系统，不锈钢材质，配备消音器与催化转化器，声浪浑厚有力，符合国六b排放标准。',
+                specs: {
+                    '类型': '双边单出（左侧）',
+                    '材质': '不锈钢',
+                    '阀门': '可变阀门排气',
+                    '消音器': 'GTI运动型双层隔音',
+                    '催化器': '三元催化',
+                    '排放标准': '国六b / 欧6d',
+                    '尾喉': 'GTI镀铬装饰'
+                }
+            },
+            intakeSystem: {
+                name: '进气系统',
+                nameEn: 'Sport Intake System',
+                icon: '🌀',
+                image: makeImage('automotive sport air intake system with air filter box, intake manifold, throttle body, turbo inlet pipe, technical product photo, white background'),
+                description: '高性能运动型进气系统，包含高流量空气滤清器、进气歧管与节气门体，优化进气效率，提升发动机动力响应，支持更高功率输出。',
+                specs: {
+                    '空滤': '高流量纸质滤芯',
+                    '进气歧管': '塑料复合运动型',
+                    '节气门': '电子节气门',
+                    '管径': '76 mm',
+                    '流量': '高流量设计',
+                    '隔音': '谐振腔降噪'
+                }
+            },
+            brakeSystem: {
+                name: '刹车系统',
+                nameEn: 'GTI Performance Brake',
+                icon: '🛑',
+                image: makeImage('volkswagen golf GTI MK8 performance brake system with red calipers, disc brakes, technical product photo, white background'),
+                description: 'GTI 高性能刹车系统，前通风盘配红色对向四活塞固定卡钳，后实心盘配单活塞浮动卡钳，配备 ABS 与 ESC 电子稳定系统，刹车性能优异。',
+                specs: {
+                    '前制动': '通风盘 Ø 340mm',
+                    '后制动': '实心盘 Ø 310mm',
+                    '卡钳': 'GTI 红色对向四活塞',
+                    '刹车片': '高性能摩擦材料',
+                    '助力': '真空助力器',
+                    '系统': 'ABS + ESC + XDS'
+                }
+            },
+            fuelSystem: {
+                name: '燃油系统',
+                nameEn: 'Fuel System',
+                icon: '⛽',
+                image: makeImage('automotive fuel system with fuel tank, fuel pump, fuel filter, fuel injectors, technical illustration, white background'),
+                description: '高压燃油系统，包含塑料油箱、电动燃油泵、燃油滤清器与 350bar 高压喷油嘴，确保精准燃油供给，支持高功率输出。',
+                specs: {
+                    '油箱容量': '50 L',
+                    '材质': '工程塑料',
+                    '油泵': '电动无刷高流量',
+                    '供油压力': '350 bar',
+                    '喷油嘴': '多点电喷',
+                    '滤清器': '长效过滤'
+                }
+            },
+            electricalSystem: {
+                name: '电气系统',
+                nameEn: 'Electrical System',
+                icon: '⚡',
+                image: makeImage('automotive electrical system with battery, wiring harness, ECU, fuse box, starter motor, alternator, technical illustration, white background'),
+                description: '12V 电气系统，包含 AGM 启停蓄电池、发动机 ECU、车身控制模块 BCM 与完整线束，支持智能能量管理和启停系统。',
+                specs: {
+                    '电瓶': '12V 60Ah AGM',
+                    '发电机': '14V 180A',
+                    'ECU': 'MED 17.9.1',
+                    '保险盒': '驾驶舱保险盒',
+                    '线束': '模块化设计',
+                    '充电': '智能充电管理'
+                }
+            },
+            acSystem: {
+                name: '空调系统',
+                nameEn: 'Dual Zone Auto AC',
+                icon: '❄️',
+                image: makeImage('automotive air conditioning system with compressor, condenser, evaporator, expansion valve, technical product photo, white background'),
+                description: '双区自动空调系统，配备变频压缩机、冷凝器与蒸发器，支持前排座椅加热与快速制冷功能，提供舒适的驾乘环境。',
+                specs: {
+                    '类型': '双区自动空调',
+                    '压缩机': '变频涡旋',
+                    '制冷剂': 'R-1234yf',
+                    '功能': '座椅加热',
+                    '滤芯': '活性炭过滤',
+                    '出风量': '约 420 m³/h'
+                }
+            },
+            sunroof: {
+                name: '天窗',
+                nameEn: 'Sunroof',
+                icon: '🌞',
+                image: makeImage('automotive sunroof with glass panel, sunshade, electric motor, automotive interior photo, white background, studio lighting'),
+                description: '电动天窗系统，包含玻璃面板与电动遮阳帘，支持一键开启与防夹功能，提升车内采光与通风。',
+                specs: {
+                    '类型': '电动天窗',
+                    '面板': '单片玻璃',
+                    '开启方式': '滑动/翘起',
+                    '遮阳帘': '电动织物',
+                    '安全': '防夹功能',
+                    '面积': '约 0.45 m²'
+                }
+            },
+            audioSystem: {
+                name: '音响系统',
+                nameEn: 'Harman Kardon Audio',
+                icon: '🔊',
+                image: makeImage('volkswagen golf GTI MK8 Harman Kardon premium audio system with speakers, subwoofer, amplifier, automotive interior photo, white background'),
+                description: 'Harman Kardon 高级音响系统，配备 6 扬声器与独立低音炮，支持多种音效模式，提供沉浸式听觉体验。',
+                specs: {
+                    '品牌': 'Harman Kardon',
+                    '扬声器': '6 个',
+                    '低音炮': '独立箱体',
+                    '功放': '320W 峰值',
+                    '音效': '环绕声',
+                    '调音': '多种音效模式'
+                }
+            }
+        };
+
+        // 整车展示大图
+        const carOverviewImage = makeImage('volkswagen golf GTI 2021 MK8 red hatchback full car exterior three quarter front view, IQ.LIGHT LED headlight with red accent, honeycomb grille, sport bumper, professional automotive photography, white background, studio lighting, sharp LED headlights, modern hot hatch design, photorealistic, 8k');
+        // 备选角度图
+        const carOverviewImageRear = makeImage('volkswagen golf GTI 2021 MK8 red hatchback rear three quarter view, LED taillights, sport exhaust, dynamic stance, automotive product photo, white background, studio lighting, photorealistic, 8k');
+
+        // 预加载缓存（避免重复请求）
+        const imageCache = new Map();
+
+        // 图片预加载函数
+        function preloadImage(url) {
+            return new Promise((resolve) => {
+                if (imageCache.has(url)) {
+                    resolve(imageCache.get(url));
+                    return;
+                }
+                const img = new Image();
+                img.onload = () => { imageCache.set(url, img); resolve(img); };
+                img.onerror = () => { imageCache.set(url, img); resolve(img); };
+                img.src = url;
+            });
+        }
+
+        async function preloadAllImages(progressCallback) {
+            const urls = [
+                ...Object.values(partData).map(p => p.image),
+                carOverviewImage,
+                carOverviewImageRear
+            ];
+            const uniqueUrls = [...new Set(urls)];
+            let loaded = 0;
+            const total = uniqueUrls.length;
+
+            // 并发预加载，但每个完成时更新进度
+            await Promise.all(uniqueUrls.map(url => {
+                return preloadImage(url).then(() => {
+                    loaded++;
+                    const percent = Math.round((loaded / total) * 100);
+                    if (progressCallback) progressCallback(percent, loaded, total);
+                });
+            }));
+        }
+
+        async function init() {
+            const canvas = document.getElementById('three-canvas');
+            const container = document.getElementById('viewer-container');
+
+            // 场景设置
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            // 相机设置
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(6, 4.15, 8);
+
+            // 渲染器设置
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // 控制器设置
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 1;
+            controls.maxDistance = 35;
+            controls.target.set(0, 1.35, 0);
+
+            // 设置灯光
+            setupLights();
+            
+            // 创建地面
+            createFloor();
+
+            // 窗口大小调整
+            window.addEventListener('resize', onWindowResize);
+
+            // 加载 GLB 模型
+            loadGLBModel();
+        }
+
+        function loadGLBModel() {
+            const progressFill = document.getElementById('loadProgressFill');
+            const progressText = document.getElementById('loadProgressText');
+            const loadingText = document.querySelector('.loading-text');
+            
+            loadingText.textContent = '正在加载3D模型...';
+            
+            const loader = new GLTFLoader();
+            loader.load(
+                'models/2021_volkswagen_golf_gti.glb',
+                function (gltf) {
+                    gltfModel = gltf.scene;
+                    
+                    // 计算模型边界并居中缩放
+                    const box = new THREE.Box3().setFromObject(gltfModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    
+                    gltfModel.position.sub(center);
+                    gltfModel.scale.multiplyScalar(3 / maxDim);
+                    
+                    scene.add(gltfModel);
+
+                    // 遍历所有子 Mesh，保存绝对坐标并优化材质
+                    allMeshes = [];
+                    gltfModel.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            // 保存原厂绝对位置和旋转（保底防穿模）
+                            child.userData.targetPos = child.position.clone();
+                            child.userData.targetRot = child.rotation.clone();
+                            child.userData.targetScale = child.scale.clone();
+                            
+                            // 优化材质
+                            optimizeMaterial(child);
+                            
+                            allMeshes.push(child);
+                        }
+                    });
+
+                    // 执行智能分组绑定
+                    buildAssemblySteps();
+
+                    // 设置UI
+                    setupUI();
+
+                    // 初始化悬停交互
+                    setupHoverInteraction();
+
+                    // 初始化模态框
+                    setupCarModal();
+
+                    // 隐藏加载画面
+                    setTimeout(() => { document.getElementById('loading').classList.add('hidden'); }, 300);
+                    
+                    // 开始动画循环
+                    animate();
+
+                    console.log('=== 模型加载完成 ===');
+                    console.log(`总网格数量: ${allMeshes.length}`);
+                    console.log('=== 所有零件名称列表 ===');
+                    allMeshes.forEach((mesh, i) => {
+                        console.log(`[${i}] ${mesh.name}`);
+                    });
+                    console.log('装配步骤分组结果:');
+                    assemblySteps.forEach((step, index) => {
+                        console.log(`${index + 1}. ${step.title}: ${step.meshes.length} 个零件`);
+                        if (step.meshes.length > 0) {
+                            step.meshes.forEach((m, i) => {
+                                console.log(`   - ${m.name}`);
+                            });
+                        }
+                    });
+                    const unmatched = allMeshes.filter(m => m.userData.stepIndex === -1);
+                    if (unmatched.length > 0) {
+                        console.log('=== 未匹配的零件 ===');
+                        unmatched.forEach(m => console.log(`- ${m.name}`));
+                    }
+                },
+                function (xhr) {
+                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                    loadingText.textContent = `正在加载3D模型... ${percent}%`;
+                },
+                function (error) {
+                    console.error('加载模型时出错:', error);
+                    loadingText.textContent = '加载失败，请检查控制台';
+                }
+            );
+        }
+
+        function buildAssemblySteps() {
+            // 初始化装配步骤（固定18步）
+            assemblySteps = [];
+            
+            partGroupMapping.forEach((mapping, key) => {
+                assemblySteps.push({
+                    id: key + 1,
+                    title: mapping.name,
+                    description: `包含 ${mapping.keywords.join(', ')} 等零件`,
+                    part: `step_${key}`,
+                    meshes: []
+                });
+            });
+
+            // 遍历所有 mesh，根据关键字匹配到对应步骤
+            allMeshes.forEach((mesh) => {
+                const meshName = mesh.name || '';
+                let matched = false;
+
+                assemblySteps.forEach((step) => {
+                    if (matched) return;
+                    
+                    const keywords = partGroupMapping[step.id - 1].keywords;
+                    for (const keyword of keywords) {
+                        if (meshName.toLowerCase().includes(keyword.toLowerCase())) {
+                            step.meshes.push(mesh);
+                            mesh.userData.stepIndex = step.id - 1;
+                            mesh.userData.partName = step.part;
+                            matched = true;
+                            break;
+                        }
+                    }
+                });
+
+                // 如果没有匹配到任何步骤，默认隐藏但不参与装配流程
+                if (!matched) {
+                    mesh.userData.stepIndex = -1;
+                    mesh.visible = false;
+                }
+            });
+
+            // 初始化所有参与装配的 mesh 为隐藏状态
+            assemblySteps.forEach((step) => {
+                step.meshes.forEach((mesh) => {
+                    mesh.visible = false;
+                });
+            });
+
+            // 创建 parts 对象用于 UI 控制
+            parts = {};
+            assemblySteps.forEach((step) => {
+                parts[step.part] = {
+                    visible: false,
+                    userData: { partName: step.part },
+                    traverse: function(callback) {
+                        step.meshes.forEach(callback);
+                    }
+                };
+            });
+
+            console.log('=== 装配步骤分组结果（共18步）===');
+            assemblySteps.forEach((step, index) => {
+                console.log(`${index + 1}. ${step.title}: ${step.meshes.length} 个零件`);
+                if (step.meshes.length > 0) {
+                    step.meshes.forEach((m, i) => {
+                        console.log(`   - ${m.name}`);
+                    });
+                }
+            });
+        }
+
+        // 悬停交互 - 射线检测
+        let raycaster, mouse, hoveredPartName = null;
+        function setupHoverInteraction() {
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            const canvas = renderer.domElement;
+            canvas.addEventListener('mousemove', onMouseMove, false);
+            canvas.addEventListener('mouseleave', () => {
+                mouse.set(-10, -10);
+                hideTooltip();
+            });
+        }
+
+        function onMouseMove(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            mouse.clientX = e.clientX;
+            mouse.clientY = e.clientY;
+        }
+
+        function findPartFromObject(obj) {
+            // 向上遍历找到所属 part
+            let cur = obj;
+            while (cur) {
+                if (cur.userData && cur.userData.partName && parts[cur.userData.partName]) {
+                    return cur.userData.partName;
+                }
+                cur = cur.parent;
+            }
+            return null;
+        }
+
+        function getColorName(hex) {
+            const r = (hex >> 16) & 255;
+            const g = (hex >> 8) & 255;
+            const b = hex & 255;
+            
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            if (gray < 30) return '纯黑色';
+            if (gray < 60) return '深灰色';
+            if (gray < 120) return '灰色';
+            if (gray < 180) return '浅灰色';
+            if (gray > 240) return '纯白色';
+            
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const delta = max - min;
+            
+            if (delta < 15) return '银灰色';
+            
+            const saturation = delta / max;
+            
+            if (saturation < 0.2) return '淡色';
+            
+            if (r === max) {
+                const hue = ((g - b) / delta) * 60;
+                if (hue < 30) return '红色';
+                if (hue < 90) return '橙色';
+                return '黄色';
+            }
+            if (g === max) {
+                const hue = (2 + (b - r) / delta) * 60;
+                if (hue < 150) return '黄绿色';
+                if (hue < 210) return '绿色';
+                return '青绿色';
+            }
+            if (b === max) {
+                const hue = (4 + (r - g) / delta) * 60;
+                if (hue < 270) return '青色';
+                if (hue < 330) return '蓝色';
+                return '紫色';
+            }
+            
+            return '标准色';
+        }
+
+        function showTooltip(mesh, clientX, clientY) {
+            const partName = mesh.userData.partName;
+            const stepIndex = mesh.userData.stepIndex;
+            
+            // 获取步骤信息
+            const stepInfo = stepIndex >= 0 && stepInfoData[stepIndex] ? stepInfoData[stepIndex] : {
+                icon: '🔧',
+                title: mesh.name || '未知零件',
+                desc: 'GLB 模型零部件，属于汽车装配系统的一部分。',
+                image: null,
+                specs: {}
+            };
+            
+            const tooltip = document.getElementById('partTooltip');
+
+            // 获取材质颜色信息（转换为文字描述）
+            const material = mesh.material;
+            let colorInfo = '标准色';
+            if (material) {
+                const mat = Array.isArray(material) ? material[0] : material;
+                if (mat.color) {
+                    const hex = mat.color.getHex();
+                    colorInfo = getColorName(hex);
+                }
+            }
+
+            // 渲染 specs HTML
+            let specsHtml = '';
+            Object.entries(stepInfo.specs || {}).forEach(([key, value]) => {
+                specsHtml += `<div class="tooltip-specs-row"><div class="label">${key}</div><div class="value">${value}</div></div>`;
+            });
+            specsHtml += `<div class="tooltip-specs-row"><div class="label">颜色</div><div class="value">${colorInfo}</div></div>`;
+
+            // 图片部分 - 如果有步骤图片显示步骤图片，否则显示默认样式
+            let imageHtml = '';
+            if (stepInfo.image) {
+                imageHtml = `<div class="tooltip-image">
+                    <img src="${stepInfo.image}" alt="${stepInfo.title}" 
+                        onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg,#1a1a2e,#2d3748)';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#888;font-size:36px;\\'>${stepInfo.icon}</div>'" />
+                </div>`;
+            } else {
+                imageHtml = `<div class="tooltip-image" style="background: linear-gradient(135deg, #1a1a2e, #2d3748);">
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#888;font-size:36px;">${stepInfo.icon}</div>
+                </div>`;
+            }
+
+            tooltip.innerHTML = `
+                <div class="tooltip-header">
+                    <div class="tooltip-icon">${stepInfo.icon}</div>
+                    <div class="tooltip-titles">
+                        <h4>${stepInfo.title}</h4>
+                        <p>${assemblySteps[stepIndex]?.title || '零部件'}</p>
+                    </div>
+                </div>
+                ${imageHtml}
+                <div class="tooltip-desc">${stepInfo.desc}</div>
+                <div class="tooltip-specs">${specsHtml}</div>
+            `;
+
+            // 添加高亮效果
+            highlightMesh(mesh);
+
+            // 直接显示（固定在左上角）
+            tooltip.classList.add('show');
+        }
+
+        function hideTooltip() {
+            const tooltip = document.getElementById('partTooltip');
+            tooltip.classList.remove('show');
+            hoveredPartName = null;
+            
+            // 恢复高亮的材质
+            restoreHighlightedMesh();
+        }
+
+        let highlightedMesh = null;
+        let originalMaterial = null;
+
+        function highlightMesh(mesh) {
+            // 先恢复之前的高亮
+            restoreHighlightedMesh();
+            
+            highlightedMesh = mesh;
+            
+            // 保存原始材质并应用高亮效果
+            if (mesh.material) {
+                originalMaterial = mesh.material.clone();
+                
+                // 创建高亮材质（发光效果）
+                const highlightMat = mesh.material.clone();
+                if (highlightMat.emissive) {
+                    highlightMat.emissive.setHex(0x4488ff);
+                    highlightMat.emissiveIntensity = 0.6;
+                }
+                if (highlightMat.color) {
+                    highlightMat.color.offsetHSL(0, 0, 0.15);
+                }
+                
+                mesh.material = highlightMat;
+            }
+        }
+
+        function restoreHighlightedMesh() {
+            if (highlightedMesh && originalMaterial) {
+                highlightedMesh.material = originalMaterial;
+                highlightedMesh = null;
+                originalMaterial = null;
+            }
+        }
+
+        function checkHover() {
+            if (!raycaster) return;
+            raycaster.setFromCamera(mouse, camera);
+
+            // 收集所有可见零件的 mesh
+            const meshes = [];
+            Object.entries(parts).forEach(([name, part]) => {
+                if (part.visible) {
+                    part.traverse(child => {
+                        if (child.isMesh) meshes.push(child);
+                    });
+                }
+            });
+
+            const intersects = raycaster.intersectObjects(meshes, false);
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object;
+                const partName = findPartFromObject(mesh);
+                const meshName = mesh.name || '无名零件';
+                
+                // 使用 mesh 的唯一标识作为 hoveredPartName
+                const uniqueId = partName + '_' + meshName;
+                
+                if (uniqueId !== hoveredPartName) {
+                    hoveredPartName = uniqueId;
+                    if (mouse.clientX !== undefined) {
+                        showTooltip(mesh, mouse.clientX, mouse.clientY);
+                    }
+                }
+            } else {
+                if (hoveredPartName) {
+                    hideTooltip();
+                }
+            }
+
+            // 鼠标光标样式
+            renderer.domElement.style.cursor = (intersects.length > 0) ? 'pointer' : 'grab';
+        }
+
+        // 整车展示模态框
+        function setupCarModal() {
+            const viewBtn = document.getElementById('viewCarBtn');
+            const modal = document.getElementById('carModal');
+            const closeBtn = document.getElementById('modalCloseBtn');
+            const heroImg = document.getElementById('carHeroImg');
+            const thumbsContainer = document.getElementById('partThumbs');
+
+            viewBtn.addEventListener('click', () => {
+                heroImg.src = carOverviewImage;
+                // 渲染零件缩略图
+                thumbsContainer.innerHTML = Object.entries(partData).map(([key, p]) => `
+                    <div class="part-thumb">
+                        <div class="img"><img src="${p.image}" alt="${p.name}" /></div>
+                        <div class="name">${p.name}</div>
+                    </div>
+                `).join('');
+                modal.classList.add('show');
+            });
+
+            const closeModal = () => modal.classList.remove('show');
+            closeBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+        }
+
+        function optimizeMaterial(mesh) {
+            const meshName = mesh.name.toLowerCase();
+            let material = mesh.material;
+
+            // 如果是材质数组，处理每个材质
+            if (Array.isArray(material)) {
+                material.forEach(mat => enhanceMaterial(mat, meshName));
+            } else {
+                enhanceMaterial(material, meshName);
+            }
+        }
+
+        function enhanceMaterial(mat, meshName) {
+            // 创建新的标准材质，如果原材质不是 MeshStandardMaterial
+            if (!(mat instanceof THREE.MeshStandardMaterial)) {
+                const newMat = new THREE.MeshStandardMaterial();
+                
+                // 复制属性
+                if (mat.color) newMat.color.copy(mat.color);
+                if (mat.map) newMat.map = mat.map;
+                if (mat.normalMap) newMat.normalMap = mat.normalMap;
+                if (mat.roughnessMap) newMat.roughnessMap = mat.roughnessMap;
+                if (mat.metalnessMap) newMat.metalnessMap = mat.metalnessMap;
+                if (mat.alphaMap) newMat.alphaMap = mat.alphaMap;
+                if (mat.transparent !== undefined) newMat.transparent = mat.transparent;
+                if (mat.opacity !== undefined) newMat.opacity = mat.opacity;
+                
+                mat = newMat;
+            }
+
+            // 豪车车漆流线质感 - 检测漆面/车身外壳零件
+            const isPaint = meshName.includes('paint') || meshName.includes('body') || 
+                           meshName.includes('car_paint') || meshName.includes('ext_body');
+            
+            // 检测黑色暗色零件
+            const isBlackPart = meshName.includes('tire') || meshName.includes('leather') ||
+                               meshName.includes('fabric') || meshName.includes('black') ||
+                               meshName.includes('dark') || meshName.includes('rubber');
+
+            if (isPaint) {
+                // 高级物理材质（PBR）车漆
+                mat.metalness = 0.85;
+                mat.roughness = 0.25;
+                mat.clearcoat = 0.9;
+                mat.clearcoatRoughness = 0.15;
+                mat.envMapIntensity = 1.2;
+            } else if (isBlackPart) {
+                // 改善黑色零部件可见性
+                mat.metalness = Math.max(mat.metalness || 0.1, 0.05);
+                mat.roughness = Math.min(mat.roughness || 0.8, 0.7);
+                
+                // 添加极微弱的自发光，使纹理可见
+                if (!mat.emissive || mat.emissive.r === 0 && mat.emissive.g === 0 && mat.emissive.b === 0) {
+                    mat.emissive = new THREE.Color(0x1a1a1a);
+                    mat.emissiveIntensity = 0.08;
+                }
+            } else {
+                // 默认优化
+                if (mat.metalness === undefined || mat.metalness === 0) {
+                    mat.metalness = 0.3;
+                }
+                if (mat.roughness === undefined || mat.roughness === 1) {
+                    mat.roughness = 0.5;
+                }
+            }
+
+            // 确保材质属性正确设置
+            mat.needsUpdate = true;
+        }
+
+        function setupLights() {
+            // 环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            // 主光源
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            mainLight.position.set(10, 15, 10);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            mainLight.shadow.camera.near = 0.5;
+            mainLight.shadow.camera.far = 50;
+            scene.add(mainLight);
+
+            // 补光
+            const fillLight = new THREE.DirectionalLight(0xe0e0e0, 0.5);
+            fillLight.position.set(-10, 8, -8);
+            scene.add(fillLight);
+
+            // 底部补偿光（由下往上打的弱平行光）- 照亮底盘和轮胎底部
+            const bottomFillLight = new THREE.DirectionalLight(0x8899aa, 0.35);
+            bottomFillLight.position.set(0, -5, 0);
+            bottomFillLight.target.position.set(0, 5, 0);
+            scene.add(bottomFillLight);
+            scene.add(bottomFillLight.target);
+
+            // 右侧补光 - 照亮车身右侧
+            const rightFillLight = new THREE.DirectionalLight(0xccccdd, 0.3);
+            rightFillLight.position.set(0, 5, -15);
+            scene.add(rightFillLight);
+
+            // 穹顶灯（高空四周）- 提供柔和的环境照明
+            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.4);
+            hemisphereLight.position.set(0, 20, 0);
+            scene.add(hemisphereLight);
+        }
+
+        function createFloor() {
+            const floorGeometry = new THREE.PlaneGeometry(60, 60);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5f5f5, 
+                roughness: 0.9, 
+                metalness: 0.05 
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+
+        function createCarParts() {
+        }
+
+        function setupUI() {
+            const stepsContainer = document.getElementById('stepsContainer');
+            
+            // 创建步骤
+            assemblySteps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'step-item';
+                stepEl.id = `step-${step.id}`;
+                stepEl.innerHTML = `
+                    <div class="step-header">
+                        <div class="step-number">${step.id}</div>
+                        <div class="step-title">${step.title}</div>
+                    </div>
+                    <div class="step-desc">${step.description}</div>
+                    <div class="step-actions">
+                        <button class="step-btn primary" data-index="${index}">▶️ 播放</button>
+                        <button class="step-btn" data-index="${index}">✅ 完成</button>
+                    </div>
+                `;
+                stepEl.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') selectStep(index);
+                });
+                stepEl.querySelectorAll('button')[0].addEventListener('click', () => playStepAnimation(index));
+                stepEl.querySelectorAll('button')[1].addEventListener('click', () => completeCurrentStep(index));
+                stepsContainer.appendChild(stepEl);
+            });
+
+            // 创建零件切换按钮
+            const partsGrid = document.getElementById('partsGrid');
+            Object.keys(parts).forEach((partName) => {
+                const chip = document.createElement('div');
+                chip.className = 'part-chip';
+                chip.id = `part-${partName}`;
+                chip.innerHTML = `<div style="font-size: 16px;">${partIcons[partName]}</div>`;
+                chip.title = assemblySteps.find(s => s.part === partName)?.title || partName;
+                chip.addEventListener('click', () => togglePart(partName));
+                partsGrid.appendChild(chip);
+            });
+
+            // 绑定按钮事件
+            document.getElementById('resetBtn').addEventListener('click', resetView);
+            document.getElementById('demoBtn').addEventListener('click', startAutoDemo);
+        }
+
+        function togglePart(partName) {
+            const part = parts[partName];
+            const chip = document.getElementById(`part-${partName}`);
+            
+            if (part) {
+                part.visible = !part.visible;
+                
+                // 找到对应的装配步骤并切换所有零件的可见性
+                const step = assemblySteps.find(s => s.part === partName);
+                if (step) {
+                    step.meshes.forEach(mesh => {
+                        mesh.visible = part.visible;
+                    });
+                }
+                
+                chip.classList.toggle('active', part.visible);
+                chip.classList.toggle('hidden', !part.visible);
+                showNotification(part.visible ? `${chip.title} 已显示` : `${chip.title} 已隐藏`);
+            }
+        }
+
+        function selectStep(index) {
+            document.querySelectorAll('.step-item').forEach((el, i) => {
+                el.classList.remove('active');
+                if (i === index) el.classList.add('active');
+            });
+            currentStep = index;
+            const step = assemblySteps[index];
+            document.getElementById('stepInfo').textContent = `${step.id}. ${step.title}`;
+        }
+
+        function playStepAnimation(stepIndex) {
+            selectStep(stepIndex);
+            const step = assemblySteps[stepIndex];
+            
+            if (!step || step.meshes.length === 0) return;
+
+            document.getElementById('welcomePanel').style.display = 'none';
+
+            // 为该步骤的所有零件设置动画起点（从目标位置向外平移15个单位）
+            step.meshes.forEach((mesh) => {
+                mesh.visible = true;
+                
+                // 获取目标位置
+                const targetPos = mesh.userData.targetPos || mesh.position.clone();
+                
+                // 计算向外偏移方向（沿局部坐标轴向外15个单位）
+                const offsetDirection = new THREE.Vector3(
+                    targetPos.x !== 0 ? Math.sign(targetPos.x) : 1,
+                    targetPos.y !== 0 ? Math.sign(targetPos.y) : 1,
+                    targetPos.z !== 0 ? Math.sign(targetPos.z) : 1
+                ).normalize();
+                
+                // 设置动画起点（向外偏移15个单位）
+                const startPos = targetPos.clone().add(offsetDirection.multiplyScalar(15));
+                
+                // 保存起点位置用于动画
+                mesh.userData.animationStartPos = startPos;
+                mesh.position.copy(startPos);
+                mesh.rotation.copy(mesh.userData.targetRot || mesh.rotation.clone());
+            });
+
+            // 更新零件状态
+            if (parts[step.part]) {
+                parts[step.part].visible = true;
+            }
+            
+            // 执行归位动画
+            animatePartsToTarget(step.meshes);
+            
+            document.getElementById(`part-${step.part}`)?.classList.add('active');
+            showNotification(`正在演示: ${step.title}`);
+        }
+
+        function animatePartsToTarget(meshes) {
+            const duration = 1200;
+            const startTime = Date.now();
+            const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = easeOutCubic(progress);
+
+                meshes.forEach((mesh) => {
+                    const startPos = mesh.userData.animationStartPos;
+                    const targetPos = mesh.userData.targetPos;
+                    
+                    if (startPos && targetPos) {
+                        // 线性插值归位
+                        mesh.position.lerpVectors(startPos, targetPos, eased);
+                    }
+                });
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            animate();
+        }
+
+        function completeCurrentStep(stepIndex) {
+            const step = assemblySteps[stepIndex];
+            const stepEl = document.getElementById(`step-${step.id}`);
+            const part = parts[step.part];
+            
+            if (!stepEl.classList.contains('completed')) {
+                if (!part.visible) {
+                    playStepAnimation(stepIndex);
+                    setTimeout(() => markStepComplete(stepEl, step), 1200);
+                } else {
+                    markStepComplete(stepEl, step);
+                }
+            }
+        }
+
+        function markStepComplete(stepEl, step) {
+            stepEl.classList.add('completed');
+            stepEl.querySelector('.step-number').textContent = '✓';
+            
+            completedStepsCount++;
+            document.getElementById('completedSteps').textContent = completedStepsCount;
+            document.getElementById('progressFill').style.width = `${(completedStepsCount / assemblySteps.length) * 100}%`;
+
+            showNotification(`✅ 步骤 ${step.id} 已完成!`);
+
+            if (completedStepsCount === assemblySteps.length) {
+                setTimeout(() => showNotification('🎉 恭喜！整车装配完成！'), 500);
+            }
+        }
+
+        function resetView() {
+            // 重置所有装配步骤的零件状态
+            assemblySteps.forEach((step) => {
+                step.meshes.forEach((mesh) => {
+                    mesh.visible = false;
+                    // 重置到原始位置
+                    if (mesh.userData.targetPos) {
+                        mesh.position.copy(mesh.userData.targetPos);
+                    }
+                    if (mesh.userData.targetRot) {
+                        mesh.rotation.copy(mesh.userData.targetRot);
+                    }
+                    if (mesh.userData.targetScale) {
+                        mesh.scale.copy(mesh.userData.targetScale);
+                    }
+                });
+            });
+
+            // 重置 parts 对象状态
+            Object.values(parts).forEach(part => {
+                part.visible = false;
+            });
+
+            document.querySelectorAll('.part-chip').forEach(chip => {
+                chip.classList.remove('active', 'hidden');
+            });
+
+            document.querySelectorAll('.step-item').forEach(el => {
+                el.classList.remove('completed', 'active');
+                el.querySelector('.step-number').textContent = el.id.replace('step-', '');
+            });
+
+            completedStepsCount = 0;
+            document.getElementById('completedSteps').textContent = '0';
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('stepInfo').textContent = '请点击右侧步骤开始';
+            document.getElementById('welcomePanel').style.display = 'block';
+
+            camera.position.set(6, 3.725, 8);
+            controls.target.set(0, 1.025, 0);
+            controls.update();
+
+            showNotification('视图已重置');
+        }
+
+        async function startAutoDemo() {
+            resetView();
+            showNotification('开始自动演示...');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            for (let i = 0; i < assemblySteps.length; i++) {
+                playStepAnimation(i);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                completeCurrentStep(i);
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+        }
+
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification show${isError ? ' error' : ''}`;
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('viewer-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            checkHover();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

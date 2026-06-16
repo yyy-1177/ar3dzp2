@@ -1,0 +1,13 @@
+{
+  "name": "ar-assembly-system",
+  "version": "1.0.0",
+  "description": "AR智能装配指导系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["ar", "assembly", "threejs"],
+  "author": "",
+  "license": "MIT"
+}
